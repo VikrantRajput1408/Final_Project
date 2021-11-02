@@ -2,6 +2,8 @@ import argparse
 import tensorflow as tf
 
 tf.random.set_seed(1234)
+
+import pickle
 from transformer.model import transformer
 from transformer.dataset import get_dataset, preprocess_sentence
 
@@ -58,7 +60,6 @@ class chatbot(tf.Module):
 
 def inference(hparams, model, tokenizer, sentence):
   sentence = preprocess_sentence(sentence)
-
   sentence = tf.expand_dims(
       hparams.start_token + tokenizer.encode(sentence) + hparams.end_token,
       axis=0)
@@ -111,10 +112,16 @@ def evaluate(hparams, model, tokenizer):
 
 
 def main(hparams):
+  # Dataset /// Tokenizer
   dataset, tokenizer = get_dataset(hparams)
 
+  filename = 'weights.h5'
   model = transformer(hparams)
-
+  # load Weights in model
+  try:
+    model.load_weights(filename)
+  except:
+    pass
   optimizer = tf.keras.optimizers.Adam(
       CustomSchedule(hparams), beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 
@@ -133,22 +140,16 @@ def main(hparams):
     return tf.keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
 
   model.compile(optimizer, loss=loss_function, metrics=[accuracy])
-
   model.fit(dataset, epochs=hparams.epochs)
+  # Save model Weights.........
+  model.save_weights(filename)
   evaluate(hparams, model, tokenizer)
   Chatbot = chatbot(tokenizer, model)
-  tf.saved_model.save(Chatbot, export_dir=hparams.model)
-
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--max_samples',
-      default=25000,
-      type=int,
-      help='maximum number of conversation pairs to use')
-  parser.add_argument(
-      '--max_length', default=40, type=int, help='maximum sentence length')
+  parser.add_argument('--max_samples',default=25000,type=int,help='maximum number of conversation pairs to use')
+  parser.add_argument('--max_length', default=40, type=int, help='maximum sentence length')
   parser.add_argument('--batch_size', default=64, type=int)
   parser.add_argument('--num_layers', default=2, type=int)
   parser.add_argument('--num_units', default=512, type=int)
@@ -156,8 +157,9 @@ if __name__ == '__main__':
   parser.add_argument('--num_heads', default=8, type=int)
   parser.add_argument('--dropout', default=0.1, type=float)
   parser.add_argument('--activation', default='relu', type=str)
-  parser.add_argument('--model', default='chatbot', type=str)
+  parser.add_argument('--model', default='model', type=str)
   parser.add_argument('--epochs', default=20, type=int)
+  
 
   hparams = parser.parse_args()
   main(hparams)
