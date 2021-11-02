@@ -102,7 +102,7 @@ def get_dataset(hparams):
 
   questions, answers = load_conversations(hparams, lines_filename,
                                           conversations_filename)
-  tokenizer_file_name = "Tokenizer_v1.1"
+  tokenizer_file_name = "Tokenizer_v1.0"
   try:
     tokenizer = tfds.deprecated.text.SubwordTextEncoder.load_from_file(tokenizer_file_name)
   except:
